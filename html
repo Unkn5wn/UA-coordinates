@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Ukraine All Valid Coordinate Finder</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {background:#eef8fd;font-family:Segoe UI,Arial,sans-serif;color:#172555;}
+    .container {max-width:1080px;margin:2em auto;background:#fff;border-radius:15px;box-shadow:0 2px 14px 0 rgba(60,80,160,.10);padding:2.2em 2.3em;}
+    h1 {text-align:center;color:#2358a2;font-size:2em;margin:.12em 0 1em;}
+    .instructions {color:#005e2a;background:#ecfbe9;border-left:6px solid #48ca55;border-radius:7px;padding:.77em 1.1em .8em 1.4em;margin-bottom:1.14em;}
+    textarea {width:100%;max-width:100%;min-height:120px;font-size:1.12em;border-radius:8px;border:2px solid #b5cff7;background:#f4fafd;padding:.75em 1em;margin-top:.5em;color:#223057;}
+    textarea:focus {border:2px solid #4ca6e4;outline:none;background:#fdfffb;}
+    button {background: #23915e; color: #fff; font-weight:600; font-size:1.07em; border:none; border-radius:7px; padding:.6em 1.7em; margin:1em .65em 1.2em 0; cursor:pointer; box-shadow:0 2px 7px 0 rgba(50,120,110,.10); transition:background .13s;}
+    button:hover {background:#168a53;}
+    .dl-btn {background:#217fec;}
+    .dl-btn:hover {background:#195fbb;}
+    .tbwrap{overflow-x:auto;}
+    #output {font-size:1em;margin-top:.45em;}
+    .result-table {width:100%;border-collapse:collapse;margin-bottom:1em;background:#fafdff;}
+    .result-table th,.result-table td {padding:.43em .16em;border-bottom:1px solid #e3eaec;}
+    .result-table th {background:#ebf8fb;}
+    .yes-cell {background:#e2f5e7;font-weight:600;}
+    .copymsg {color:#0a9b09;font-size:1.3em;display:inline;margin-left:.5em;}
+    .btn-mini {font-size:.96em;padding:.25em 1em;margin:.04em .3em;}
+    @media(max-width:900px){.container{padding:1em .2em;}}
+    @media(max-width:500px){button{font-size:.92em;}}
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>Ukraine All Valid Coordinate Finder</h1>
+  <div class="instructions">
+    Paste any sequence of digits. This tool finds <b>all valid Ukraine coordinates</b> (latitude 44.0–53.0, longitude 22.0–41.0, each starting with 44–53 and 22–41) from every possible non-overlapping substring.<br>
+    Use <b>Copy</b> to instantly copy and get a ✓ confirmation (persistent until another row is copied); open in <b>Google Earth</b>; download all.
+  </div>
+  <form onsubmit="findCoords(); return false;">
+    <textarea id="inbox" placeholder="441234123456..."></textarea><br>
+    <button type="submit">Find All Ukraine Coordinates</button>
+    <button type="button" onclick="downloadBatch()" class="dl-btn">Download Results</button>
+  </form>
+  <div class="tbwrap"><div id="output"></div></div>
+</div>
+<script>
+const UA = {lat1:44.0, lat2:53.0, lon1:22.0, lon2:41.0, centerLat:48.5, centerLon:31.5};
+let lastResults = '';
+function findCoords() {
+  let txt = document.getElementById('inbox').value.trim();
+  if (!txt) {document.getElementById('output').innerHTML = "<i>No numbers provided.</i>"; lastResults = "";return;}
+  let numStr = txt.replace(/\D+/g,'');
+  if (numStr.length < 8) {document.getElementById('output').innerHTML = "<span style='color:#b70000'>Not enough digits for coordinates.</span>"; lastResults = ""; return;}
+  let results = [], seen = new Set(), L = numStr.length;
+  for(let i=0;i<=L-4;++i)for(let l=4;l<=8&&i+l<=L;++l)for(let d=2;d<=Math.min(5,l-1);++d){
+    let latRaw=numStr.substr(i,l),latV=parseFloat(latRaw.slice(0,d)+"."+latRaw.slice(d));
+    let latPrefix = parseInt(latRaw.slice(0,2),10);
+    if(latV<UA.lat1||latV>UA.lat2||latPrefix<44||latPrefix>53)continue;
+    for(let j=0;j<=L-4;++j)for(let m=4;m<=8&&j+m<=L;++m){
+      if(j>=i&&j<i+l)continue;if(i>=j&&i<j+m)continue;
+      for(let e=2;e<=Math.min(5,m-1);++e){
+        let lonRaw=numStr.substr(j,m),lonV=parseFloat(lonRaw.slice(0,e)+"."+lonRaw.slice(e));
+        let lonPrefix = parseInt(lonRaw.slice(0,2),10);
+        if(lonV<UA.lon1||lonV>UA.lon2||lonPrefix<22||lonPrefix>41)continue;
+        let key=latV.toFixed(5)+','+lonV.toFixed(5); if(seen.has(key))continue; seen.add(key);
+        let dist = Math.sqrt(Math.pow(latV-UA.centerLat,2) + Math.pow(lonV-UA.centerLon,2));
+        let digitsUsed = `Lat[${i+1}-${i+l}] ${latRaw} | Lon[${j+1}-${j+m}] ${lonRaw}`;
+        results.push({lat:latV, lon:lonV, pos:digitsUsed, dist:dist});
+      }
+    }
+  }
+  results.sort((a,b)=>a.dist-b.dist);
+  let html = '<table class="result-table"><tr><th>Lat</th><th>Lon</th><th>Status</th><th>Copy</th><th>Google Earth</th><th>Digits Used</th><th>Copied</th></tr>';
+  let txtRows = [];
+  let found = false;
+  for(let [idx, r] of results.entries()) {
+    let latstr = r.lat.toFixed(5), lonstr = r.lon.toFixed(5);
+    let rowid = "copied_" + idx;
+    html += `<tr>
+      <td>${latstr}</td>
+      <td>${lonstr}</td>
+      <td class="yes-cell">Ukraine</td>
+      <td><button class="btn-mini" onclick="copyCoord('${latstr}','${lonstr}', '${rowid}',event)">Copy</button></td>
+      <td><a class="btn-mini" target="_blank" href="https://earth.google.com/web/search/${latstr},${lonstr}">Google Earth</a></td>
+      <td>${r.pos}</td>
+      <td id="${rowid}"></td>
+    </tr>`;
+    txtRows.push(`${latstr}\t${lonstr}\tUkraine\t${r.pos}`);
+    found = true;
+  }
+  html += '</table>';
+  if (!found) html = "<span style='color:#d83000'>No valid Ukraine coordinates found in this digit batch.</span>";
+  document.getElementById('output').innerHTML = html;
+  lastResults = txtRows.join('\n');
+}
+function copyCoord(lat,lon,rowid,ev){
+  navigator.clipboard.writeText(`${lat},${lon}`).then(()=>{
+    // Clear all checkmarks
+    let ticks = document.querySelectorAll('.copymsg');
+    ticks.forEach(e=>{e.textContent='';});
+    // Set only the current row's checkmark (and do NOT remove it)
+    let tickcell = document.getElementById(rowid);
+    if(tickcell) tickcell.innerHTML = `<span class="copymsg">&#x2714;</span>`;
+  });
+}
+function downloadBatch(){
+  if (!lastResults) {alert("Please run the finder first!");return;}
+  let blob=new Blob([lastResults],{type:"text/plain"}),
+    url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download="ukraine_all_coords.txt";
+  document.body.appendChild(a);a.click();
+  setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},120);
+}
+</script>
+</body>
+</html>

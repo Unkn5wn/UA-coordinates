@@ -11,5 +11,7 @@ Based on this simulation, the program needs to be worked out to improve the perf
 
 If you have any questions about the simulated test feel free to ask.
 
+Update: 03.22.2026 I have made the some improvements to the code which eliminates 1 hour and 35 minutes of manually inputting coordinates to Google Earth by making accessible kml file which would automatically do it for you. The process eliminated 94% of the time which means that in less than seven minutes you are able to get the data versus manually inputting everything in and it also eliminates the margin of error (forgotten coordinates). 
+
 Thank you,
 Unkn5wn
